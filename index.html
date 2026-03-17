@@ -1,0 +1,1131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Simple Survey</title>
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black" />
+<meta name="apple-mobile-web-app-title" content="Simple Survey" />
+<meta name="theme-color" content="#0b0f14" />
+<link rel="manifest" href="manifest.json" />
+<link rel="apple-touch-icon" href="icon.png" />
+<script>
+  /* Unregister any old service workers that may cause blank screen */
+  if("serviceWorker" in navigator){
+    navigator.serviceWorker.getRegistrations().then(regs => {
+      regs.forEach(r => r.unregister());
+    });
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("./sw.js", {scope: "./"})
+        .then(r => console.log("SW registered:", r.scope))
+        .catch(e => console.log("SW failed, running without:", e));
+    });
+  }
+</script>
+
+<style>
+  :root{
+    --bg:#0b0f14; --text:#e9f0f7; --muted:#9fb0c0;
+    --border:rgba(255,255,255,.12);
+    --shadow:0 18px 45px rgba(0,0,0,.45);
+    --blue:#8ED3FF;
+    --yellow:#FFF200;
+    --green:#9EE7C2;
+    --pink:#FFB3D9;
+    --purple:#CBB6FF;
+    --btnSize: 150px;
+    --ring: 10px;
+    --ringOffset: 10px;
+    --gap: 22px;
+  }
+
+  *{box-sizing:border-box}
+  html{background:#0b0f14}
+  body{
+    margin:0;
+    font-family:-apple-system,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+    background:radial-gradient(1200px 600px at 50% 0%, #142130 0%, var(--bg) 60%);
+    color:var(--text);
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:22px;
+    user-select:none;
+    -webkit-tap-highlight-color:transparent;
+  }
+
+  .wrap{width:100%; max-width:1100px}
+  .card{
+    border:1px solid rgba(255,255,255,.10);
+    background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+    border-radius:26px;
+    box-shadow:var(--shadow);
+    overflow:hidden;
+  }
+  header{
+    padding:24px;
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    gap:14px;
+  }
+  .brand{margin:0; font-size:20px; letter-spacing:.2px; color:rgba(233,240,247,.92);}
+  .sub{color:var(--muted); font-size:15px; margin-top:6px}
+  .meta{color:var(--muted); font-size:14px; text-align:right; line-height:1.4; white-space:nowrap}
+
+  .body{padding:0 24px 24px; display:grid; gap:16px}
+  .panel{
+    background:rgba(0,0,0,.18);
+    border:1px solid var(--border);
+    border-radius:22px;
+    padding:18px;
+  }
+
+  .introTitle{
+    margin:4px 0 10px;
+    font-size:40px;
+    line-height:1.12;
+    letter-spacing:.2px;
+  }
+  .introDesc{
+    color:var(--muted);
+    font-size:18px;
+    line-height:1.55;
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .qtitle{
+    font-size:28px;
+    margin:4px 0 16px;
+    line-height:1.25;
+  }
+
+  .btnrow{
+    display:flex;
+    gap:var(--gap);
+    flex-wrap:nowrap;
+    justify-content:center;
+    align-items:center;
+    padding: calc(var(--ring) + var(--ringOffset)) 0;
+    overflow: visible;
+  }
+
+  .round{
+    width:var(--btnSize);
+    height:var(--btnSize);
+    border-radius:999px;
+    border:none;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    padding:14px;
+    font-size:18px;
+    font-weight:950;
+    letter-spacing:.15px;
+    color:#0b0f14;
+    box-shadow:0 16px 34px rgba(0,0,0,.35);
+    touch-action: manipulation;
+    flex:0 0 auto;
+    position:relative;
+  }
+  .round span{
+    display:block;
+    line-height:1.15;
+    padding:0 4px;
+    word-break:break-word;
+    hyphens:auto;
+  }
+  .round:active{transform:translateY(2px) scale(.99)}
+
+  .blue{background:linear-gradient(180deg, rgba(142,211,255,1), rgba(142,211,255,.82))}
+  .yellow{background:linear-gradient(180deg, rgba(255,242,0,1), rgba(255,242,0,.82))}
+  .green{background:linear-gradient(180deg, rgba(158,231,194,1), rgba(158,231,194,.82))}
+  .pink{background:linear-gradient(180deg, rgba(255,179,217,1), rgba(255,179,217,.82))}
+  .purple{background:linear-gradient(180deg, rgba(203,182,255,1), rgba(203,182,255,.82))}
+
+  .selected{
+    outline: var(--ring) solid rgba(233,240,247,.98);
+    outline-offset: 6px;
+    box-shadow:
+      0 16px 34px rgba(0,0,0,.35),
+      0 0 0 6px rgba(0,0,0,.28),
+      0 0 30px rgba(233,240,247,.55);
+  }
+
+  .nav{
+    display:flex;
+    justify-content:space-between;
+    gap:12px;
+    flex-wrap:wrap;
+    align-items:center;
+    margin-top:14px;
+  }
+  .small{
+    border:1px solid rgba(255,255,255,.18);
+    background:rgba(255,255,255,.06);
+    color:var(--text);
+    border-radius:16px;
+    padding:12px 16px;
+    font-size:18px;
+    font-weight:800;
+    cursor:pointer;
+    touch-action: manipulation;
+  }
+  .primary{
+    border:none;
+    background:linear-gradient(180deg, rgba(31,43,54,.92), rgba(31,43,54,.72));
+  }
+  .disabled{opacity:.45; pointer-events:none}
+
+  input{
+    width:100%;
+    font-size:22px;
+    padding:16px;
+    border-radius:16px;
+    border:1px solid rgba(255,255,255,.2);
+    background:rgba(255,255,255,.06);
+    color:var(--text);
+    outline:none;
+  }
+  input::placeholder{color:rgba(233,240,247,.45)}
+  .help{color:var(--muted); font-size:14px; margin-top:10px; line-height:1.4}
+
+  /* Admin panel */
+  .admin{
+    display:none;
+    margin-top:14px;
+    background:rgba(0,0,0,.22);
+    border:1px solid rgba(255,255,255,.12);
+    border-radius:18px;
+    padding:12px;
+  }
+  .admin.show{display:block}
+
+  .adminRow{
+    display:flex;
+    gap:10px;
+    align-items:center;
+    justify-content:flex-end;
+    flex-wrap:wrap;
+  }
+  .adminLabel{
+    margin-right:auto;
+    color:var(--muted);
+    font-size:14px;
+    user-select:none;
+  }
+  .chip{
+    border:1px solid rgba(255,255,255,.18);
+    background:rgba(255,255,255,.06);
+    color:var(--text);
+    border-radius:999px;
+    padding:8px 12px;
+    font-size:13px;
+    font-weight:900;
+    letter-spacing:.2px;
+  }
+
+  .adminGrid{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap:12px;
+    margin-top:12px;
+  }
+  .field{display:grid; gap:6px;}
+  .label{color:rgba(233,240,247,.92); font-size:14px; font-weight:800;}
+  textarea{
+    width:100%;
+    min-height:110px;
+    font-size:16px;
+    padding:12px;
+    border-radius:14px;
+    border:1px solid rgba(255,255,255,.2);
+    background:rgba(255,255,255,.06);
+    color:var(--text);
+    outline:none;
+    resize:vertical;
+    line-height:1.35;
+  }
+  .full{grid-column:1 / -1}
+  .adminButtons{
+    display:flex;
+    justify-content:flex-end;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-top:10px;
+  }
+
+  .sectionTitle{
+    margin-top:14px;
+    font-size:16px;
+    font-weight:900;
+    color:rgba(233,240,247,.92);
+  }
+  .tableWrap{
+    margin-top:10px;
+    border:1px solid rgba(255,255,255,.12);
+    border-radius:14px;
+    overflow:hidden;
+  }
+  table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:13px;
+    color:rgba(233,240,247,.92);
+    background:rgba(255,255,255,.03);
+  }
+  th, td{
+    padding:10px 10px;
+    border-bottom:1px solid rgba(255,255,255,.08);
+    vertical-align:top;
+  }
+  th{
+    color:rgba(233,240,247,.75);
+    text-align:left;
+    font-weight:900;
+    background:rgba(0,0,0,.18);
+  }
+  tr:last-child td{border-bottom:none}
+  .mono{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}
+  .tinyBtn{
+    border:1px solid rgba(255,255,255,.18);
+    background:rgba(255,255,255,.06);
+    color:var(--text);
+    border-radius:12px;
+    padding:8px 10px;
+    font-size:12px;
+    font-weight:900;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+
+  /* PIN overlay */
+  .pinOverlay{
+    position:fixed; inset:0;
+    display:none; align-items:center; justify-content:center;
+    background:rgba(0,0,0,.7);
+    backdrop-filter: blur(8px);
+    z-index:100;
+  }
+  .pinOverlay.show{display:flex}
+  .pinBox{
+    background:rgba(18,26,34,.97);
+    border:1px solid rgba(255,255,255,.14);
+    border-radius:24px;
+    padding:40px 36px;
+    text-align:center;
+    box-shadow:var(--shadow);
+    width:min(400px,92%);
+  }
+  .pinBox h3{font-size:26px; margin:0 0 8px;}
+  .pinBox p{color:var(--muted); font-size:15px; margin:0 0 24px;}
+  .pinInput{
+    width:100%;
+    font-size:28px;
+    padding:14px;
+    border-radius:14px;
+    border:1px solid rgba(255,255,255,.2);
+    background:rgba(255,255,255,.06);
+    color:var(--text);
+    outline:none;
+    text-align:center;
+    letter-spacing:8px;
+    margin-bottom:16px;
+  }
+  .pinError{color:#FF7B7B; font-size:14px; margin-top:8px; min-height:20px;}
+  .pinButtons{display:flex; gap:10px; justify-content:center; margin-top:8px;}
+
+  .overlay{
+    position:fixed; inset:0;
+    display:none; align-items:center; justify-content:center;
+    background:rgba(0,0,0,.6);
+    backdrop-filter: blur(6px);
+  }
+  .overlay.show{display:flex}
+  .thanks{
+    background:rgba(18,26,34,.95);
+    border:1px solid rgba(255,255,255,.12);
+    border-radius:24px;
+    padding:40px;
+    text-align:center;
+    box-shadow:var(--shadow);
+    width:min(720px,92%);
+  }
+  .thanks h2{font-size:42px; margin:0 0 10px}
+  .thanks p{margin:0; color:var(--muted); font-size:18px}
+
+  .toast{
+    position:fixed;
+    bottom:18px; left:50%;
+    transform:translateX(-50%);
+    background:rgba(0,0,0,.65);
+    border:1px solid rgba(255,255,255,.18);
+    padding:12px 16px;
+    border-radius:12px;
+    opacity:0;
+    transition:opacity .18s ease;
+    pointer-events:none;
+    z-index:200;
+  }
+  .toast.show{opacity:1}
+
+  /* Admin open button in header */
+  .adminOpenBtn{
+    border:1px solid rgba(255,255,255,.14);
+    background:rgba(255,255,255,.05);
+    color:rgba(233,240,247,.6);
+    border-radius:12px;
+    padding:8px 14px;
+    font-size:13px;
+    font-weight:700;
+    cursor:pointer;
+    margin-top:8px;
+  }
+
+  @media (max-width: 1020px){
+    :root{ --btnSize: 135px; --gap: 20px; }
+    .introTitle{font-size:34px}
+    .adminGrid{grid-template-columns:1fr}
+    .tableWrap{overflow:auto}
+    table{min-width:900px}
+  }
+  @media (max-width: 900px){  :root{ --btnSize: 122px; --gap: 18px; } .qtitle{font-size:24px} }
+  @media (max-width: 780px){  :root{ --btnSize: 110px; --gap: 16px; } .round{font-size:16px} }
+  @media (max-width: 680px){  :root{ --btnSize: 98px;  --gap: 14px; } .introDesc{font-size:16px} }
+</style>
+</head>
+
+<body>
+<div class="wrap">
+  <div class="card">
+    <header>
+      <div>
+        <div class="brand">Simple Survey</div>
+        <div class="sub" id="stepText">Intro</div>
+        <button class="adminOpenBtn" id="adminOpenBtn" onclick="openAdminWithPin()">⚙ Admin</button>
+      </div>
+      <div class="meta">
+        Responses: <span id="count">—</span><br/>
+        Last saved: <span id="last">—</span>
+      </div>
+    </header>
+
+    <div class="body">
+
+      <!-- INTRO -->
+      <div class="panel" id="p0">
+        <div class="introTitle" id="introTitle"></div>
+        <div class="introDesc" id="introDesc"></div>
+
+        <div class="nav" style="margin-top:18px;">
+          <button class="small disabled">Back</button>
+          <button class="small primary" onclick="startSurvey()">Start</button>
+        </div>
+
+        <div class="admin" id="admin">
+          <div class="adminRow">
+            <div class="adminLabel" id="adminLabel">Admin Panel</div>
+            <span class="chip" id="activeChip">Active: —</span>
+            <span class="chip" id="editChip">Editing: OFF</span>
+            <button class="small" onclick="toggleEditing()">Toggle Editing</button>
+            <button class="small" onclick="exportCSVCurrent()">Export CSV</button>
+            <button class="small" onclick="startNewSurvey()">Start New Survey</button>
+            <button class="small" onclick="applySeedNow()">Apply Template</button>
+            <button class="small" onclick="closeAdmin()">Close Admin</button>
+          </div>
+
+          <div class="help" style="margin-top:8px;">
+            💡 <strong>Toggle Editing</strong> to make changes. Press <strong>Save edits</strong> when done. Use <strong>Start New Survey</strong> when moving to a new exhibition — it copies your current questions so you can update them, and keeps old responses separate. Use <strong>Apply Template</strong> to load the questions written in the HTML file's SURVEY_SEED section.
+          </div>
+
+          <!-- EDITOR -->
+          <div class="adminGrid">
+            <div class="field full">
+              <div class="label">Survey Title</div>
+              <input id="admTitle" type="text" />
+            </div>
+
+            <div class="field full">
+              <div class="label">Description (one line)</div>
+              <input id="admDesc" type="text" />
+            </div>
+
+            <div class="field">
+              <div class="label">Q1 text</div>
+              <textarea id="admQ1"></textarea>
+            </div>
+            <div class="field">
+              <div class="label">Q1 answers (max 5, one per line)</div>
+              <textarea id="admA1"></textarea>
+            </div>
+
+            <div class="field">
+              <div class="label">Q2 text</div>
+              <textarea id="admQ2"></textarea>
+            </div>
+            <div class="field">
+              <div class="label">Q2 answers (max 5, one per line)</div>
+              <textarea id="admA2"></textarea>
+            </div>
+
+            <div class="field">
+              <div class="label">Q3 text</div>
+              <textarea id="admQ3"></textarea>
+            </div>
+            <div class="field">
+              <div class="label">Q3 answers (max 5, one per line)</div>
+              <textarea id="admA3"></textarea>
+            </div>
+
+            <div class="field">
+              <div class="label">Q4 text</div>
+              <textarea id="admQ4"></textarea>
+            </div>
+            <div class="field">
+              <div class="label">Q4 answers (max 5, one per line)</div>
+              <textarea id="admA4"></textarea>
+            </div>
+
+            <div class="field">
+              <div class="label">Q5 text</div>
+              <textarea id="admQ5"></textarea>
+            </div>
+            <div class="field">
+              <div class="label">Q5 answers (max 5, one per line)</div>
+              <textarea id="admA5"></textarea>
+            </div>
+
+            <div class="field">
+              <div class="label">Q6 text</div>
+              <textarea id="admQ6"></textarea>
+            </div>
+            <div class="field">
+              <div class="label">Q6 answers (max 5, one per line)</div>
+              <textarea id="admA6"></textarea>
+            </div>
+          </div>
+
+          <div class="adminButtons">
+            <button class="small" id="resetBtn" onclick="resetSurvey()">Reset to template</button>
+            <button class="small primary" id="saveBtn" onclick="saveSurveyEdits()">Save edits</button>
+          </div>
+
+          <!-- VERSIONS -->
+          <div class="sectionTitle">Survey History</div>
+          <div class="tableWrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Active</th>
+                  <th>Survey ID</th>
+                  <th>Based on</th>
+                  <th>Title</th>
+                  <th>Created</th>
+                  <th>Responses</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="versionsBody"></tbody>
+            </table>
+          </div>
+
+          <!-- EXPORT LOG -->
+          <div class="sectionTitle">Export History</div>
+          <div class="tableWrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Exported at</th>
+                  <th>Survey ID</th>
+                  <th>Based on</th>
+                  <th>Rows</th>
+                  <th>Filename</th>
+                  <th>Download CSV</th>
+                </tr>
+              </thead>
+              <tbody id="exportsBody"></tbody>
+            </table>
+          </div>
+
+          <div class="help" style="margin-top:10px;">
+            "Download CSV" re-generates the file using the saved export snapshot + stored responses for that survey.
+          </div>
+        </div>
+      </div>
+
+      <!-- QUESTION PANEL -->
+      <div class="panel" id="pq" style="display:none;">
+        <div class="qtitle" id="qTitle"></div>
+        <div class="btnrow" id="qRow"></div>
+
+        <div id="emailBlock" style="display:none; margin-top:18px;">
+          <div class="qtitle">Email (optional)</div>
+          <input id="email" type="email" inputmode="email" autocomplete="email"
+                 placeholder="name@example.com (optional)" />
+          <div class="help">You can submit without an email.</div>
+        </div>
+
+        <div class="nav">
+          <button class="small" id="backBtn" onclick="back()">Back</button>
+          <button class="small primary disabled" id="nextBtn" onclick="next()">Next</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- PIN PROMPT OVERLAY -->
+<div class="pinOverlay" id="pinOverlay">
+  <div class="pinBox">
+    <h3>🔒 Admin Access</h3>
+    <p>Enter the admin password to continue.</p>
+    <input class="pinInput" id="pinInput" type="password" maxlength="20"
+           placeholder="••••••••" autocomplete="off"
+           onkeydown="if(event.key==='Enter') checkPin()" />
+    <div class="pinError" id="pinError"></div>
+    <div class="pinButtons">
+      <button class="small" onclick="closePinOverlay()">Cancel</button>
+      <button class="small primary" onclick="checkPin()">Enter</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="thanks">
+    <h2>Thank you!</h2>
+    <p>Your answers have been saved.</p>
+  </div>
+</div>
+<div class="toast" id="toast">Saved</div>
+
+<script>
+  /***********************
+   * PASSWORD
+   ***********************/
+  const ADMIN_PASSWORD = "SCA2026";
+
+  /***********************
+   * SURVEY SEED
+   ***********************/
+  const SURVEY_SEED = {
+    title: "Survey Title",
+    description: "Survey description (one line)",
+    questions: [
+      { question: "This is Question 1", answers: ["Answer 1","Answer 2","Answer 3","Answer 4","Answer 5"] },
+      { question: "This is Question 2", answers: ["Answer 1","Answer 2","Answer 3","Answer 4","Answer 5"] },
+      { question: "This is Question 3", answers: ["Answer 1","Answer 2","Answer 3","Answer 4","Answer 5"] },
+      { question: "This is Question 4", answers: ["Answer 1","Answer 2","Answer 3","Answer 4","Answer 5"] }
+    ]
+  };
+
+  /***********************
+   * TEMPLATE DEFAULTS
+   ***********************/
+  function makePlaceholderSurvey(){
+    const qs = [];
+    for(let i=1;i<=6;i++){
+      qs.push({ id:"q"+i, title:`This is Question ${i}`, answers:["Answer 1","Answer 2","Answer 3","Answer 4","Answer 5"] });
+    }
+    return { title:"Survey Title", description:"Survey description (one line)", version:"template_base", parentVersion:null, createdAtISO:new Date().toISOString(), questions:qs };
+  }
+
+  function applySeedToSurvey(base){
+    const out = clone(base);
+    out.title = (SURVEY_SEED.title || out.title || "Survey Title").trim();
+    out.description = (SURVEY_SEED.description || out.description || "Survey description (one line)").trim();
+    const seedQs = Array.isArray(SURVEY_SEED.questions) ? SURVEY_SEED.questions : [];
+    out.questions = [];
+    for(let i=1;i<=6;i++){
+      const sq = seedQs[i-1];
+      const qText = sq ? String(sq.question||"").trim() : "";
+      const ans = sq && Array.isArray(sq.answers) ? sq.answers.map(a=>String(a||"").trim()).filter(Boolean).slice(0,5) : [];
+      out.questions.push({ id:"q"+i, title:qText, answers:ans });
+    }
+    return out;
+  }
+
+  const DEFAULT_SURVEY = applySeedToSurvey(makePlaceholderSurvey());
+
+  /***********************
+   * STORAGE
+   ***********************/
+  const ACTIVE_VERSION_KEY = "sca_survey_active_version_v1";
+  const REGISTRY_KEY       = "sca_survey_registry_v1";
+  const EXPORT_LOG_KEY     = "sca_survey_export_log_v1";
+  const CONFIG_PREFIX      = "sca_survey_config__";
+  const RESP_PREFIX        = "sca_survey_responses__";
+  const META_PREFIX        = "sca_survey_meta__";
+
+  function clone(obj){ return structuredClone(obj); }
+  function lsLoad(key, fallback){ try{ const r=localStorage.getItem(key); return r ? JSON.parse(r) : fallback; }catch{ return fallback; } }
+  function lsSave(key, val){ localStorage.setItem(key, JSON.stringify(val)); }
+
+  function configKey(v){ return CONFIG_PREFIX+v; }
+  function respKey(v)  { return RESP_PREFIX+v; }
+  function metaKey(v)  { return META_PREFIX+v; }
+
+  function ensureRegistryHas(version, survey){
+    const reg = lsLoad(REGISTRY_KEY, []);
+    if(!reg.some(x=>x.version===version)){
+      reg.unshift({ version, parentVersion:survey.parentVersion??null, title:survey.title??"Survey Title", createdAtISO:survey.createdAtISO??new Date().toISOString() });
+      lsSave(REGISTRY_KEY, reg);
+    }
+  }
+
+  function saveConfig(survey){ lsSave(configKey(survey.version), survey); ensureRegistryHas(survey.version, survey); }
+  function loadConfig(version){ return lsLoad(configKey(version), null); }
+  function hasAnyConfigs(){ const r=lsLoad(REGISTRY_KEY,[]); return Array.isArray(r)&&r.length>0; }
+
+  function initIfNeeded(){
+    let active = localStorage.getItem(ACTIVE_VERSION_KEY);
+    if(!hasAnyConfigs() && !active){ saveConfig(DEFAULT_SURVEY); localStorage.setItem(ACTIVE_VERSION_KEY, DEFAULT_SURVEY.version); return; }
+    if(!active){ saveConfig(DEFAULT_SURVEY); localStorage.setItem(ACTIVE_VERSION_KEY, DEFAULT_SURVEY.version); }
+    else{ const cfg=loadConfig(active); if(!cfg){ saveConfig(DEFAULT_SURVEY); localStorage.setItem(ACTIVE_VERSION_KEY, DEFAULT_SURVEY.version); } }
+  }
+
+  initIfNeeded();
+
+  function getActiveVersion(){ return localStorage.getItem(ACTIVE_VERSION_KEY)||DEFAULT_SURVEY.version; }
+  function setActiveVersion(v){ localStorage.setItem(ACTIVE_VERSION_KEY, v); }
+  function getActiveSurvey(){ const v=getActiveVersion(); const cfg=loadConfig(v); if(cfg) return cfg; saveConfig(DEFAULT_SURVEY); setActiveVersion(DEFAULT_SURVEY.version); return clone(DEFAULT_SURVEY); }
+
+  let SURVEY = getActiveSurvey();
+
+  /***********************
+   * RUNTIME STATE
+   ***********************/
+  let editingEnabled = false;
+  let screen = 0;
+  let qi = 0;
+  const answersById = {};
+  let activeQuestions = [];
+
+  const $ = id => document.getElementById(id);
+  const nowISO = () => new Date().toISOString();
+  const fmt = iso => iso ? new Date(iso).toLocaleString() : "—";
+  const pad = n => String(n).padStart(2,"0");
+  const palette = ["yellow","blue","green","pink","purple"];
+
+  function toast(t){
+    $("toast").textContent = t;
+    $("toast").classList.add("show");
+    setTimeout(()=>$("toast").classList.remove("show"), 1200);
+  }
+
+  function meta(){
+    const version = getActiveVersion();
+    const r = lsLoad(respKey(version), []);
+    const raw = lsLoad(metaKey(version), null);
+    const m = Array.isArray(raw) ? (raw[0]||{}) : (raw||{});
+    $("count").textContent = r.length;
+    $("last").textContent = fmt(m.lastSavedISO);
+    if($("activeChip")) $("activeChip").textContent = "Active: " + version;
+  }
+
+  function rebuildActiveQuestions(){
+    const qs = (SURVEY.questions||[]).slice(0,6);
+    activeQuestions = qs
+      .map((q,idx)=>({ id:q.id||("q"+(idx+1)), title:String(q.title||"").trim(), answers:(q.answers||[]).map(x=>String(x||"").trim()).filter(Boolean).slice(0,5) }))
+      .filter(q=>q.title.length>0 && q.answers.length>0);
+  }
+
+  function stepLabel(){
+    if(screen===0){ $("stepText").textContent="Intro"; return; }
+    const total=activeQuestions.length||0;
+    $("stepText").textContent=`Step ${Math.min(qi+1,total)} of ${total}`;
+  }
+
+  function renderQuestion(){
+    const q = activeQuestions[qi];
+    $("qTitle").textContent = q ? q.title : "No questions configured";
+    const row = $("qRow");
+    row.innerHTML = "";
+    if(!q){ $("nextBtn").classList.add("disabled"); $("emailBlock").style.display="none"; return; }
+    const picked = answersById[q.id];
+    q.answers.forEach((label,i)=>{
+      const btn = document.createElement("button");
+      btn.className = `round ${palette[i%palette.length]}`;
+      btn.type = "button";
+      btn.setAttribute("aria-label", label);
+      btn.onclick = ()=>{ answersById[q.id]=label; toast("Selected"); show(); };
+      const span = document.createElement("span");
+      span.textContent = label;
+      btn.appendChild(span);
+      if(picked===label) btn.classList.add("selected");
+      row.appendChild(btn);
+    });
+    const isLast = (qi===activeQuestions.length-1);
+    $("emailBlock").style.display = isLast ? "block" : "none";
+    $("nextBtn").textContent = isLast ? "Submit" : "Next";
+    $("nextBtn").classList.toggle("disabled", !answersById[q.id]);
+  }
+
+  function show(){
+    SURVEY = getActiveSurvey();
+    rebuildActiveQuestions();
+    stepLabel();
+    $("p0").style.display = (screen===0) ? "block" : "none";
+    $("pq").style.display = (screen===1) ? "block" : "none";
+
+    // Admin button only visible on intro page
+    $("adminOpenBtn").style.display = (screen===0) ? "inline-block" : "none";
+
+    $("introTitle").textContent = SURVEY.title||"Survey Title";
+    $("introDesc").textContent = SURVEY.description||"Survey description (one line)";
+    document.title = SURVEY.title||"Survey Template";
+    if(screen===1){
+      if(activeQuestions.length===0){ screen=0; toast("No questions configured"); }
+      else{
+        qi=Math.max(0,Math.min(qi,activeQuestions.length-1));
+        renderQuestion();
+        // Back is always enabled on question pages (Q1 goes back to intro)
+        $("backBtn").classList.remove("disabled");
+      }
+    }
+    syncAdminInputs();
+    updateAdminEditState();
+    renderVersionsTable();
+    renderExportLogTable();
+    meta();
+  }
+
+  function startSurvey(){
+    rebuildActiveQuestions();
+    if(activeQuestions.length===0){ toast("No questions configured"); return; }
+    for(const k in answersById) delete answersById[k];
+    $("email").value="";
+    screen=1; qi=0; show();
+  }
+
+  function back(){
+    if(qi<=0){ screen=0; show(); return; }  // Q1 back → intro
+    qi--; show();
+  }
+
+  function next(){
+    const q = activeQuestions[qi];
+    if(!q||!answersById[q.id]){ toast("Please select an answer"); return; }
+    if(qi<activeQuestions.length-1){ qi++; show(); return; }
+    submit();
+  }
+
+  function submit(){
+    for(const q of activeQuestions){ if(!answersById[q.id]){ toast("Please answer all questions"); return; } }
+    const email = ($("email").value||"").trim();
+    const savedVersion = SURVEY.version;
+    const responses = lsLoad(respKey(savedVersion),[]);
+    responses.push({ timestamp:nowISO(), email, survey_title:SURVEY.title||"Survey Title", survey_version:savedVersion, answers:Object.fromEntries(activeQuestions.map(q=>[q.id,answersById[q.id]])) });
+    lsSave(respKey(savedVersion), responses);
+    lsSave(metaKey(savedVersion), {lastSavedISO:nowISO()});
+    meta(); /* update header immediately after save */
+    $("overlay").classList.add("show");
+    setTimeout(()=>$("overlay").classList.remove("show"), 900);
+    for(const k in answersById) delete answersById[k];
+    $("email").value="";
+    screen=0; qi=0; show();
+  }
+
+  /***********************
+   * PIN / ADMIN OPEN
+   ***********************/
+  function openAdminWithPin(){
+    $("pinInput").value = "";
+    $("pinError").textContent = "";
+    $("pinOverlay").classList.add("show");
+    setTimeout(()=>$("pinInput").focus(), 80);
+  }
+
+  function closePinOverlay(){
+    $("pinOverlay").classList.remove("show");
+  }
+
+  function checkPin(){
+    const entered = $("pinInput").value;
+    if(entered === ADMIN_PASSWORD){
+      closePinOverlay();
+      $("admin").classList.add("show");
+      toast("Admin unlocked");
+      show();
+    } else {
+      $("pinError").textContent = "Incorrect password. Please try again.";
+      $("pinInput").value = "";
+      $("pinInput").focus();
+    }
+  }
+
+  function closeAdmin(){
+    $("admin").classList.remove("show");
+    editingEnabled = false;
+    updateAdminEditState();
+    toast("Admin closed");
+  }
+
+  function toggleEditing(){
+    editingEnabled = !editingEnabled;
+    toast(editingEnabled ? "Editing ON — make your changes then Save" : "Editing OFF");
+    updateAdminEditState();
+  }
+
+  /***********************
+   * ADMIN EDITING
+   ***********************/
+  function linesToArr(text){
+    return (text||"").split(/\r?\n/).map(s=>s.trim()).filter(Boolean).slice(0,5);
+  }
+
+  function syncAdminInputs(){
+    $("admTitle").value = SURVEY.title||"";
+    $("admDesc").value = SURVEY.description||"";
+    for(let i=1;i<=6;i++){
+      const q=(SURVEY.questions||[])[i-1]||{title:"",answers:[]};
+      $("admQ"+i).value = q.title||"";
+      $("admA"+i).value = (q.answers||[]).slice(0,5).join("\n");
+    }
+  }
+
+  function updateAdminEditState(){
+    $("editChip").textContent = `Editing: ${editingEnabled?"ON":"OFF"}`;
+    const ids=["admTitle","admDesc","admQ1","admA1","admQ2","admA2","admQ3","admA3","admQ4","admA4","admQ5","admA5","admQ6","admA6"];
+    ids.forEach(id=>{ const el=$(id); el.readOnly=!editingEnabled; el.style.opacity=editingEnabled?"1":".72"; });
+    $("saveBtn").classList.toggle("disabled", !editingEnabled);
+    $("resetBtn").classList.toggle("disabled", !editingEnabled);
+  }
+
+  function saveSurveyEdits(){
+    if(!editingEnabled){ toast("Editing is OFF — click Toggle Editing first"); return; }
+    const edited = clone(SURVEY);
+    edited.title = $("admTitle").value.trim()||"Survey Title";
+    edited.description = ($("admDesc").value||"").trim()||"Survey description (one line)";
+    edited.questions = [];
+    for(let i=1;i<=6;i++){
+      edited.questions.push({ id:"q"+i, title:($("admQ"+i).value||"").trim(), answers:linesToArr($("admA"+i).value) });
+    }
+    saveConfig(edited);
+    editingEnabled = false;
+    toast("Changes saved!");
+    show();
+  }
+
+  function resetSurvey(){
+    if(!editingEnabled){ toast("Editing is OFF — click Toggle Editing first"); return; }
+    const base = clone(DEFAULT_SURVEY);
+    base.version = SURVEY.version;
+    base.parentVersion = SURVEY.parentVersion??null;
+    base.createdAtISO = SURVEY.createdAtISO??new Date().toISOString();
+    saveConfig(base);
+    editingEnabled = false;
+    toast("Reset to template.");
+    show();
+  }
+
+  /***********************
+   * APPLY SEED (Option C)
+   * Loads questions from the SURVEY_SEED block at the top of the file
+   * into the current active survey. Responses are never touched.
+   ***********************/
+  function applySeedNow(){
+    const confirmed = window.confirm(
+      "This will replace the current survey's title, description and questions\n" +
+      "with whatever is written in the SURVEY_SEED section of the HTML file.\n\n" +
+      "Your collected responses will NOT be affected.\n\n" +
+      "Continue?"
+    );
+    if(!confirmed) return;
+
+    const updated = clone(SURVEY);
+    updated.title = (SURVEY_SEED.title || "Survey Title").trim();
+    updated.description = (SURVEY_SEED.description || "Survey description (one line)").trim();
+    const seedQs = Array.isArray(SURVEY_SEED.questions) ? SURVEY_SEED.questions : [];
+    updated.questions = [];
+    for(let i=1;i<=6;i++){
+      const sq = seedQs[i-1];
+      const qText = sq ? String(sq.question||"").trim() : "";
+      const ans = sq && Array.isArray(sq.answers)
+        ? sq.answers.map(a=>String(a||"").trim()).filter(Boolean).slice(0,5)
+        : [];
+      updated.questions.push({ id:"q"+i, title:qText, answers:ans });
+    }
+    saveConfig(updated);
+    editingEnabled = false;
+    toast("Template applied! Questions updated from SURVEY_SEED.");
+    show();
+  }
+
+  /***********************
+   * START NEW SURVEY
+   * Copies current questions into a new survey so you can update
+   * them for the next exhibition. Old responses stay on the old survey.
+   ***********************/
+  function startNewSurvey(){
+    const confirmed = window.confirm(
+      "This will create a new survey based on your current questions.\n\n" +
+      "Your current responses will be kept safely under the old survey.\n\n" +
+      "After this, turn on Editing to update your questions for the new exhibition, then Save.\n\n" +
+      "Continue?"
+    );
+    if(!confirmed) return;
+
+    const stamp = new Date();
+    const v = [stamp.getFullYear(), pad(stamp.getMonth()+1), pad(stamp.getDate()), pad(stamp.getHours()), pad(stamp.getMinutes()), pad(stamp.getSeconds())].join("");
+
+    const copy = clone(SURVEY);
+    copy.parentVersion = SURVEY.version;
+    copy.version = `survey_${v}`;
+    copy.createdAtISO = nowISO();
+
+    saveConfig(copy);
+    setActiveVersion(copy.version);
+
+    for(const k in answersById) delete answersById[k];
+    $("email").value="";
+    screen=0; qi=0;
+
+    editingEnabled = true;
+    toast("New survey created! Turn on Editing to update questions.");
+    show();
+  }
+
+  /***********************
+   * VERSION TABLE
+   ***********************/
+  function countResponsesFor(version){ return lsLoad(respKey(version),[]).length; }
+
+  function setActiveFromUI(version){
+    setActiveVersion(version);
+    for(const k in answersById) delete answersById[k];
+    $("email").value="";
+    screen=0; qi=0;
+    toast("Switched to this survey");
+    show();
+  }
+
+  function renderVersionsTable(){
+    const body = $("versionsBody");
+    const reg = lsLoad(REGISTRY_KEY,[]);
+    const active = getActiveVersion();
+    body.innerHTML = "";
+    reg.forEach(item=>{
+      const tr = document.createElement("tr");
+      const cells = [
+        item.version===active ? "✓" : "",
+        `<span class="mono">${escapeHtml(item.version)}</span>`,
+        item.parentVersion ? `<span class="mono">${escapeHtml(item.parentVersion)}</span>` : "—",
+        item.title||"—",
+        item.createdAtISO ? new Date(item.createdAtISO).toLocaleString() : "—",
+        countResponsesFor(item.version)
+      ];
+      cells.forEach(c=>{ const td=document.createElement("td"); td.innerHTML=String(c); tr.appendChild(td); });
+
+      const tdA = document.createElement("td");
+      const btnSet = document.createElement("button");
+      btnSet.className="tinyBtn"; btnSet.textContent="Set active"; btnSet.onclick=()=>setActiveFromUI(item.version);
+      const btnEx = document.createElement("button");
+      btnEx.className="tinyBtn"; btnEx.style.marginLeft="8px"; btnEx.textContent="Export CSV"; btnEx.onclick=()=>exportCSVForVersion(item.version);
+      tdA.appendChild(btnSet); tdA.appendChild(btnEx);
+      tr.appendChild(tdA);
+      body.appendChild(tr);
+    });
+  }
+
+  /***********************
+   * EXPORT
+   ***********************/
+  function esc(v){ const s=String(v??""); const needs=/[",\n]/.test(s); const out=s.replace(/"/g,'""'); return needs?`"${out}"`:out; }
+  function makeFilename(version){ const d=new Date(); return `sca_survey_${version}_${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}.csv`; }
+
+  function getQuestionsSnapshotFromSurvey(version){
+    const cfg=loadConfig(version); if(!cfg) return [];
+    return (cfg.questions||[]).slice(0,6).map((q,idx)=>({ id:q.id||("q"+(idx+1)), title:String(q.title||"").trim(), answers:(q.answers||[]).map(x=>String(x||"").trim()).filter(Boolean).slice(0,5) })).filter(q=>q.title.length>0&&q.answers.length>0);
+  }
+
+  function csvFrom(version, snapshot){
+    const responses=lsLoad(respKey(version),[]);
+    const cfg=loadConfig(version)||{title:"Survey Title",version};
+    const headers=["timestamp","email","survey_title","survey_version",...snapshot.map((q,i)=>`Q${i+1}: ${q.title}`)];
+    let csv=headers.map(esc).join(",")+"\n";
+    responses.forEach(row=>{ csv+=[row.timestamp,row.email,row.survey_title,row.survey_version,...snapshot.map(q=>(row.answers&&row.answers[q.id])?row.answers[q.id]:"")].map(esc).join(",")+"\n"; });
+    return { csv, rowCount:responses.length, title:cfg.title||"Survey Title" };
+  }
+
+  function downloadCSVString(csv, filename){
+    const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url; a.download=filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function logExport(entry){ const log=lsLoad(EXPORT_LOG_KEY,[]); log.unshift(entry); lsSave(EXPORT_LOG_KEY,log); }
+
+  function exportCSVCurrent(){ exportCSVForVersion(SURVEY.version); }
+
+  function exportCSVForVersion(version){
+    const snapshot=getQuestionsSnapshotFromSurvey(version);
+    if(snapshot.length===0){ toast("No questions for this survey"); return; }
+    const out=csvFrom(version,snapshot);
+    const filename=makeFilename(version);
+    const cfg=loadConfig(version)||{};
+    logExport({ id:cryptoRandomId(), exportedAtISO:nowISO(), version, parentVersion:cfg.parentVersion??null, filename, rows:out.rowCount, surveyTitle:cfg.title||"Survey Title", questionsSnapshot:snapshot });
+    downloadCSVString(out.csv,filename);
+    toast("CSV exported!");
+    show();
+  }
+
+  function exportCSVFromLog(logId){
+    const log=lsLoad(EXPORT_LOG_KEY,[]);
+    const entry=log.find(x=>x.id===logId);
+    if(!entry){ toast("Export record not found"); return; }
+    const out=csvFrom(entry.version, entry.questionsSnapshot||[]);
+    downloadCSVString(out.csv, entry.filename||makeFilename(entry.version));
+    toast("Downloaded!");
+  }
+
+  function renderExportLogTable(){
+    const body=$("exportsBody");
+    const log=lsLoad(EXPORT_LOG_KEY,[]);
+    body.innerHTML="";
+    if(log.length===0){
+      const tr=document.createElement("tr");
+      const td=document.createElement("td"); td.colSpan=6; td.textContent="No exports yet.";
+      tr.appendChild(td); body.appendChild(tr); return;
+    }
+    log.forEach(entry=>{
+      const tr=document.createElement("tr");
+      [
+        entry.exportedAtISO?new Date(entry.exportedAtISO).toLocaleString():"—",
+        `<span class="mono">${escapeHtml(entry.version||"—")}</span>`,
+        entry.parentVersion?`<span class="mono">${escapeHtml(entry.parentVersion)}</span>`:"—",
+        String(entry.rows??"—"),
+        entry.filename||"—"
+      ].forEach(c=>{ const td=document.createElement("td"); td.innerHTML=String(c); tr.appendChild(td); });
+      const tdDl=document.createElement("td");
+      const btn=document.createElement("button");
+      btn.className="tinyBtn"; btn.textContent="Download"; btn.onclick=()=>exportCSVFromLog(entry.id);
+      tdDl.appendChild(btn); tr.appendChild(tdDl);
+      body.appendChild(tr);
+    });
+  }
+
+  /***********************
+   * UTILS
+   ***********************/
+  function escapeHtml(s){
+    const map = {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"};
+    return String(s).replace(/[&<>"']/g, c => map[c]);
+  }
+  function cryptoRandomId(){ const a=new Uint32Array(2); (crypto&&crypto.getRandomValues)?crypto.getRandomValues(a):(a[0]=Date.now(),a[1]=Math.random()*1e9); return (a[0].toString(16)+a[1].toString(16)).slice(0,16); }
+
+  // Initial render — call meta() first so counter never flashes 0
+  meta();
+  show();
+</script>
+</body>
+</html>
